@@ -1,0 +1,44 @@
+name: 신청알림
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: inquiry-alert
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests beautifulsoup4
+
+      - name: 신규 신청 확인
+        env:
+          ADMIN_ID: ${{ secrets.ADMIN_ID }}
+          ADMIN_PW: ${{ secrets.ADMIN_PW }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_IDS: ${{ secrets.TG_CHAT_IDS }}
+          TZ: Asia/Seoul
+        run: python inquiry_alert.py
+
+      - name: 상태 저장
+        run: |
+          git config user.name "alert-bot"
+          git config user.email "alert-bot@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || git commit -m "state update"
+          git pull --rebase --quiet || true
+          git push
