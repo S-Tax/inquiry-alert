@@ -52,7 +52,7 @@ def load_config():
         return {
             "login_url": env.get("LOGIN_URL", "https://start-inc.org/admin"),
             "list_url": env.get("LIST_URL", "https://start-inc.org/admin/board/board_list?code=inquiry&language=&search_type=&search=&files=&roundpage=10"),
-            "admin_id": env.get("ADMIN_ID", "admin"),
+            "admin_id": env.get("ADMIN_ID", ""),
             "admin_pw": env["ADMIN_PW"],
             "telegram_bot_token": env["TG_TOKEN"],
             "telegram_chat_ids": chat_ids,
@@ -285,7 +285,7 @@ def check_once(cfg, state, probe=False):
                 log(f"#{r['id']} 상세 조회 실패: {e}")
         msg = build_message(r, detail, cfg)
         send_telegram(cfg, msg)
-        log(f"알림 전송: #{r.get('seq')} (no={r['id']}) {detail.get('작성자', '')}")
+        log(f"알림 전송: #{r.get('seq')} (no={r['id']})")
         state["last_id"] = r["id"]
         save_state(state)
 
