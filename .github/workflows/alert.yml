@@ -38,7 +38,27 @@ jobs:
         run: |
           git config user.name "alert-bot"
           git config user.email "alert-bot@users.noreply.github.com"
+          if git diff --quiet state.json; then
+            echo "state.json 변경 없음"
+            exit 0
+          fi
+          cp state.json /tmp/state.mine.json
+          git checkout -- state.json
+          git pull --quiet
+          # 원격 state 와 내 state 중 last_id 가 큰 쪽을 남긴다 (절대 작은 값으로 덮어쓰지 않음)
+          python - <<'EOF'
+          import json
+          mine = json.load(open('/tmp/state.mine.json'))
+          try:
+              remote = json.load(open('state.json'))
+          except Exception:
+              remote = {}
+          merged = dict(remote)
+          merged.update(mine)
+          merged['last_id'] = max(int(mine.get('last_id') or 0), int(remote.get('last_id') or 0))
+          json.dump(merged, open('state.json', 'w'), ensure_ascii=False, indent=2)
+          print('저장:', merged)
+          EOF
           git add state.json
           git diff --cached --quiet || git commit -m "state update"
-          git pull --rebase --quiet || true
           git push
