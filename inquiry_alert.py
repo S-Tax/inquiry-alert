@@ -199,10 +199,17 @@ def send_telegram(cfg, text):
     if isinstance(chat_ids, (str, int)):
         chat_ids = [chat_ids]
     url = f"https://api.telegram.org/bot{token}/sendMessage"
+    ok = True
     for cid in chat_ids:
-        r = requests.post(url, data={"chat_id": cid, "text": text, "disable_web_page_preview": True}, timeout=20)
-        if r.status_code != 200:
-            log(f"텔레그램 전송 실패 chat_id={cid}: {r.text[:200]}")
+        try:
+            r = requests.post(url, data={"chat_id": cid, "text": text, "disable_web_page_preview": True}, timeout=20)
+            if r.status_code != 200:
+                log(f"텔레그램 전송 실패 chat_id={cid}: {r.text[:200]}")
+                ok = False
+        except Exception as e:  # noqa
+            log(f"텔레그램 전송 실패 chat_id={cid}: {e}")
+            ok = False
+    return ok
 
 
 def build_message(row, detail, cfg):
@@ -284,7 +291,10 @@ def check_once(cfg, state, probe=False):
             except Exception as e:  # noqa
                 log(f"#{r['id']} 상세 조회 실패: {e}")
         msg = build_message(r, detail, cfg)
-        send_telegram(cfg, msg)
+        if not send_telegram(cfg, msg):
+            # 전송 실패: '봤다'고 기록하지 않고 종료 → 다음 턴에 같은 글부터 재시도
+            log(f"알림 전송 실패: #{r.get('seq')} (no={r['id']}) — 다음 턴에 재시도")
+            return
         log(f"알림 전송: #{r.get('seq')} (no={r['id']})")
         state["last_id"] = r["id"]
         save_state(state)
